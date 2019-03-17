@@ -3,8 +3,6 @@ const bodyParser = require('body-parser')
 const app = express()
 const port = 3000
 
-const usersController = require('./api/controllers/usersController.js');
-
 app.use(bodyParser.json())
 app.use(
   bodyParser.urlencoded({
@@ -12,13 +10,9 @@ app.use(
   })
 )
 
+// register routes
+require('./api/controllers/routes')(app);
+
 app.listen(port, () => {
   console.log(`App running on port ${port}.`)
 })
-
-// users
-app.get('/users', usersController.getUsers)
-app.get('/users/:id', usersController.getUserById)
-app.post('/users', usersController.createUser)
-app.put('/users/:id', usersController.updateUser)
-app.delete('/users/:id', usersController.deleteUser)
