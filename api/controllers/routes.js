@@ -4,7 +4,7 @@ function routes(app) {
     // users
     app.get('/users', usersController.getUsers)
     app.get('/users/:id', usersController.getUserById)
-    app.post('/users', usersController.createUser)
+    app.post('/users', usersController.validateCreateUser, usersController.createUser)
     app.put('/users/:id', usersController.updateUser)
     app.delete('/users/:id', usersController.deleteUser)
 }

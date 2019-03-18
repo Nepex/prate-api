@@ -1,6 +1,15 @@
 const server = require('../../connection.js');
 const bcrypt = require('bcrypt');
 const uuidv4 = require('uuid/v4');
+const Joi = require('joi');
+const _ = require('underscore');
+const user = require('../models/user');
+
+const createUserParams = Joi.object().keys({
+  name: Joi.string().trim().max(25).required(),
+  email: Joi.string().lowercase().email().trim().max(60).required(),
+  password: Joi.string().trim().min(5).max(255).required()
+}).required();
 
 const getUsers = (request, response) => {
   server.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
@@ -22,7 +31,25 @@ const getUserById = (request, response) => {
   })
 }
 
-const createUser = (request, response) => {
+async function validateCreateUser(request, response, next) {
+  const { email } = request.body
+  const validationResult = Joi.validate(request.body, createUserParams, { abortEarly: false });
+
+  if (validationResult.error) {
+    return response.send(400, _.pluck(validationResult.error.details, 'message')).end();
+  }
+
+  user.checkEmailExists(email)
+    .then(function (existingEmail) {
+      if (existingEmail) {
+        return response.status(400).send({ msg: 'Email already exists' }).end();
+      }
+      return next();
+    }).catch(function (error) { console.log(error); });
+
+}
+
+async function createUser(request, response) {
   const { name, email, password } = request.body
 
   bcrypt.hash(password, 10, function (err, hash) {
@@ -32,7 +59,7 @@ const createUser = (request, response) => {
       if (error) {
         throw error
       }
-      response.status(201).send({})
+      return response.status(201).send({ msg: 'success' })
     })
   });
 }
@@ -65,9 +92,10 @@ const deleteUser = (request, response) => {
 }
 
 module.exports = {
-  getUsers,
-  getUserById,
-  createUser,
-  updateUser,
-  deleteUser,
+  getUsers: getUsers,
+  getUserById: getUserById,
+  validateCreateUser: validateCreateUser,
+  createUser: createUser,
+  updateUser: updateUser,
+  deleteUser: deleteUser,
 }
