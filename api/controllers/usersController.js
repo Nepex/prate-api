@@ -26,6 +26,10 @@ async function getUser(request, response) {
   const token = request.headers.authorization.split(' ')[1];
 
   jwt.verify(token, '3346841372', function (err, decoded) {
+    if (!decoded) {
+      return response.status(200).send({ msg: err }).end();
+    }
+
     server.query('SELECT * FROM users WHERE id = $1', [decoded.id], (error, results) => {
       if (error) {
         throw error
