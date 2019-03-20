@@ -23,20 +23,20 @@ const getUsers = (request, response) => {
 }
 
 async function getUser(request, response) {
-  // LOOK INTO SIGNING
   const token = request.headers.authorization.split(' ')[1];
-  const payload = jwt.decode(token);
 
-  server.query('SELECT * FROM users WHERE id = $1', [payload.id], (error, results) => {
-    if (error) {
-      throw error
-    }
+  jwt.verify(token, '3346841372', function (err, decoded) {
+    server.query('SELECT * FROM users WHERE id = $1', [decoded.id], (error, results) => {
+      if (error) {
+        throw error
+      }
 
-    const user = results.rows[0];
-    delete user.id
-    delete user.password
-    response.status(200).json(user);
-  })
+      const user = results.rows[0];
+      delete user.id
+      delete user.password
+      response.status(200).json(user);
+    });
+  });
 }
 
 async function validateCreateUser(request, response, next) {
