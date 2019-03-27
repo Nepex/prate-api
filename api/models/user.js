@@ -1,4 +1,5 @@
 const server = require('../../connection.js');
+const bcrypt = require('bcrypt');
 
 async function checkEmailExists(email) {
     return new Promise(function (resolve, reject) {
@@ -18,6 +19,26 @@ async function checkEmailExists(email) {
     });
 }
 
+async function checkPasswordCorrect(id, password) {
+    return new Promise(function (resolve, reject) {
+        server.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
+            if (error) {
+                throw error
+            }
+
+            bcrypt.compare(password, results.rows[0].password, function (err, res) {
+                if (res) {
+                    resolve(true);
+                } else {
+                    reject(false);
+                }
+            });
+
+        })
+    });
+}
+
 module.exports = {
-    checkEmailExists: checkEmailExists
+    checkEmailExists: checkEmailExists,
+    checkPasswordCorrect: checkPasswordCorrect
 };

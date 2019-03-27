@@ -6,7 +6,7 @@ function routes(app) {
     app.get('/users', usersController.getUsers);
     app.get('/users/me', usersController.getUser);
     app.post('/users', usersController.validateCreateUser, usersController.createUser);
-    app.put('/users/:id', usersController.updateUser);
+    app.put('/users/:id', usersController.validateUpdateUser, usersController.updateUser);
     app.delete('/users/:id', usersController.deleteUser);
 
     // sessions

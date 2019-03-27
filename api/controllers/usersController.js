@@ -13,6 +13,15 @@ const createUserParams = Joi.object().keys({
   password: Joi.string().trim().min(5).max(255).required()
 }).required();
 
+const updateUserParams = Joi.object().keys({
+  id: Joi.string().guid({ version: ['uuidv4'] }).required(),
+  name: Joi.string().trim().max(25).required(),
+  oldPassword: Joi.string().trim().min(5).max(255).empty(null),
+  newPassword: Joi.string().trim().min(5).max(255).empty(null),
+  interests: Joi.array().max(8).items(Joi.string().trim().lowercase()).single()
+}).and('oldPassword', 'newPassword');
+
+
 const getUsers = (request, response) => {
   server.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
     if (error) {
@@ -25,9 +34,9 @@ const getUsers = (request, response) => {
 async function getUser(request, response) {
   const token = request.headers.authorization.split(' ')[1];
 
-  jwt.verify(token, '3346841372', function (err, decoded) {
+  jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
     if (!decoded) {
-      return response.status(200).send({ msg: err }).end();
+      return response.status(400).send([err]).end();
     }
 
     server.query('SELECT * FROM users WHERE id = $1', [decoded.id], (error, results) => {
@@ -36,7 +45,6 @@ async function getUser(request, response) {
       }
 
       const user = results.rows[0];
-      delete user.id
       delete user.password
       response.status(200).json(user);
     });
@@ -48,16 +56,21 @@ async function validateCreateUser(request, response, next) {
   const validationResult = Joi.validate(request.body, createUserParams, { abortEarly: false });
 
   if (validationResult.error) {
-    return response.send(400, _.pluck(validationResult.error.details, 'message')).end();
-  }
+    const errors = [];
 
+    for (let i = 0; i < validationResult.error.details.length; i++) {
+      errors.push(validationResult.error.details[i].message);
+    }
+
+    return response.status(400).send(errors).end();
+  }
 
   // future tip: use promise.all if multiple validations from db are required
   var lowerEmail = email.toLowerCase();
   user.checkEmailExists(lowerEmail)
     .then(function (existingEmail) {
       if (existingEmail) {
-        return response.status(400).send({ msg: 'Email already exists' }).end();
+        return response.status(400).send(['Email already exists']).end();
       }
       return next();
     }).catch(function (error) { console.log(error); });
@@ -79,20 +92,80 @@ async function createUser(request, response) {
   });
 }
 
-const updateUser = (request, response) => {
-  const id = parseInt(request.params.id)
-  const { name, email } = request.body
+async function validateUpdateUser(request, response, next) {
+  const { newPassword, oldPassword } = request.body
 
-  server.query(
-    'UPDATE users SET name = $1, email = $2 WHERE id = $3',
-    [name, email, id],
-    (error, results) => {
-      if (error) {
-        throw error
-      }
-      response.status(200).send(`User modified with ID: ${id}`);
+  const token = request.headers.authorization.split(' ')[1];
+  const validationResult = Joi.validate(request.body, updateUserParams, { abortEarly: false });
+
+  if (validationResult.error) {
+    const errors = [];
+
+    for (let i = 0; i < validationResult.error.details.length; i++) {
+      errors.push(validationResult.error.details[i].message);
     }
-  )
+
+    return response.status(400).send(errors).end();
+  }
+
+  if (newPassword) {
+    jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+      if (!decoded) {
+        return response.status(400).send([err]).end();
+      }
+
+      user.checkPasswordCorrect(decoded.id, oldPassword)
+        .then(function (res) {
+          return next();
+        }).catch(function (error) {
+          return response.status(400).send(['Incorrect password']).end();
+        });
+    });
+  } else {
+    return next();
+  }
+}
+
+const updateUser = (request, response) => {
+  const { name, newPassword, interests } = request.body
+  const token = request.headers.authorization.split(' ')[1];
+
+  jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+    if (!decoded) {
+      return response.status(400).send([err]).end();
+    }
+
+    server.query(
+      'SELECT * FROM users WHERE id = $1',
+      [decoded.id],
+      (error, results) => {
+        if (error) {
+          throw error
+        }
+
+        bcrypt.hash(newPassword, 10, function (err, hash) {
+          let password;
+
+          if (!newPassword) {
+            password = results.rows[0].password;
+          } else {
+            password = hash;
+          }
+          server.query(
+            'UPDATE users SET name = $1, interests = $2, password = $3 WHERE id = $4',
+            [name, interests, password, decoded.id],
+            (error, results) => {
+              if (error) {
+                throw error
+              }
+              response.status(200).send({ msg: 'success' });
+            });
+        });
+
+      }
+    )
+
+  });
 }
 
 const deleteUser = (request, response) => {
@@ -112,6 +185,7 @@ module.exports = {
   getUser: getUser,
   validateCreateUser: validateCreateUser,
   createUser: createUser,
+  validateUpdateUser: validateUpdateUser,
   updateUser: updateUser,
   deleteUser: deleteUser,
 }
