@@ -9,6 +9,8 @@ function routes(app) {
     app.put('/users/:id', usersController.validateUpdateUser, usersController.updateUser);
     app.delete('/users/:id', usersController.deleteUser);
 
+    // chat
+
     // sessions
     app.post('/sessions/auth', sessionsController.authenicateUser);
 }
