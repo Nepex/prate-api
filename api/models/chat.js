@@ -2,56 +2,49 @@ let users = [];
 
 function chat(io) {
     io.on('connection', (socket) => {
-        let host;
-
-        // emit (event, data) ->
-        // socket.emit('connected', 'you connected son');
-
         socket.on('storeUserInfo', function (data) {
             data.clientId = socket.id;
-            data.chattingWith = null;
-            host = data;
+            data.currentlyMatched = false;
+            console.log('connected: ' + socket.id + ' ' + data.name);
             users.push(data);
         });
 
         socket.on('searchForMatch', function (data) {
-            // recall on front end in interval everytime null is returned
-            const match = searchForMatch();
+            // recall on front end with interval
+            const partner = searchForMatch(socket.id);
 
-            if (!match) {
-                // no match found
+            if (!partner) {
                 socket.emit('matchResults', null)
             } else {
-                // match found
-                host.chattingWith = personFound;
+                let host;
+                const partnerClientId = partner.clientId;
 
+                // set host match
                 users.forEach(user => {
-                    if (user.clientId === host.clientId) {
-                        user = host;
-                        socket.emit('matchResults', personFound);
+                    if (user.clientId === socket.id) {
+                        user.currentlyMatched = true;
+                        host = user;
+                        socket.emit('matchResults', partner);
                     }
+                });
 
-                    if (user.clientId === personFound.clientId) {
-                        const personFoundClientId = personFound.clientId;
-                        personFound.chattingWith = host;
-                        io.to(`${personFoundClientId}`).emit('matchResults', host);
+                // set partner match
+                users.forEach(user => {
+                    if (user.clientId === partner.clientId) {
+                        user.currentlyMatched = true;
+                        io.to(`${partnerClientId}`).emit('matchResults', host);
                     }
                 });
             }
         });
 
         socket.on('message-send', function (data) {
-            users.forEach(user => {
-                if (user.clientId === socket.id) {
-                    const partnerSocketId = user.chattingWith.clientId;
-
-                    io.to(`${partnerSocketId}`).emit('message-received', data);
-
-                }
-            });
+            const partnerClientId = data.receiver;
+            io.to(`${partnerClientId}`).emit('message-received', data);
         });
 
         socket.on('disconnect', function () {
+            // emit disconnection to partner, and disconnect them on frontend
             users.forEach(user => {
                 if (user.clientId === socket.id) {
                     users.splice(user, 1);
@@ -68,10 +61,10 @@ function chat(io) {
     });
 }
 
-function searchForMatch() {
+function searchForMatch(hostId) {
     for (let i = 0; i < users.length; i++) {
-        if (!users[i].chattingWith) {
-            return user;
+        if (!users[i].currentlyMatched && users[i].clientId !== hostId) {
+            return users[i];
         }
     }
 
