@@ -9,6 +9,26 @@ function chat(io) {
             users.push(data);
         });
 
+        socket.on('disconnected', function (data) {
+            const partnerClientId = data.receiver;
+            io.to(`${partnerClientId}`).emit('partnerDisconnected');
+
+            // set host/partner disconnected
+            users.forEach(user => {
+                if (user.clientId === socket.id) {
+                    users.splice(user, 1);
+                    console.log(user.name + ' disconnected');
+                }
+            });
+
+            users.forEach(user => {
+                if (user.clientId === partnerClientId) {
+                    users.splice(user, 1);
+                    console.log(user.name + ' disconnected');
+                }
+            });
+        });
+
         socket.on('searchForMatch', function (data) {
             // recall on front end with interval
             const partner = searchForMatch(socket.id);
@@ -48,19 +68,8 @@ function chat(io) {
             io.to(`${partnerClientId}`).emit('user-typed', data);
         });
 
-        socket.on('disconnect', function () {
-            // emit disconnection to partner, and disconnect them on frontend
-            users.forEach(user => {
-                if (user.clientId === socket.id) {
-                    users.splice(user, 1);
-                    console.log(user.name + ' disconnected');
-                }
-            });
-        });
-
         socket.on('error', function (err) {
             console.log('received error from client:', socket.id);
-            console.log(err);
             socket.emit('error', err)
         });
     });
