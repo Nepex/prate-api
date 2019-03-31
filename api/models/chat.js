@@ -43,6 +43,11 @@ function chat(io) {
             io.to(`${partnerClientId}`).emit('message-received', data);
         });
 
+        socket.on('user-typed', function (data) {
+            const partnerClientId = data.receiver;
+            io.to(`${partnerClientId}`).emit('user-typed', data);
+        });
+
         socket.on('disconnect', function () {
             // emit disconnection to partner, and disconnect them on frontend
             users.forEach(user => {
