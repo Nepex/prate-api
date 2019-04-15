@@ -11,23 +11,35 @@ function chat(io) {
 
         socket.on('disconnected', function (data) {
             const partnerClientId = data.receiver;
-            io.to(`${partnerClientId}`).emit('partnerDisconnected');
 
             // set host/partner disconnected
             users.forEach(user => {
                 if (user.clientId === socket.id) {
-                    users.splice(user, 1);
+                    users.splice(users.indexOf(user), 1);
                     console.log(user.name + ' disconnected');
                 }
             });
 
             users.forEach(user => {
                 if (user.clientId === partnerClientId) {
-                    users.splice(user, 1);
+                    users.splice(users.indexOf(user), 1);
                     console.log(user.name + ' disconnected');
                 }
             });
+
+            io.to(`${partnerClientId}`).emit('partnerDisconnected');
+            socket.disconnect();
         });
+
+        socket.on('cancelMatching', function (data) {
+            users.forEach(user => {
+                if (user.clientId === socket.id) {
+                    users.splice(users.indexOf(user), 1);
+                    console.log(user.name + ' disconnected');
+                    socket.disconnect();
+                }
+            });
+        })
 
         socket.on('searchForMatch', function (data) {
             // recall on front end with interval
