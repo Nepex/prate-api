@@ -1,13 +1,43 @@
+const server = require('../../connection.js');
+const sessionsController = require('../controllers/sessionsController.js');
+const jwt = require('jsonwebtoken');
+
 let users = [];
 
 function chat(io) {
     io.on('connection', (socket) => {
-        socket.on('storeUserInfo', function (data) {
-            data.clientId = socket.id;
-            data.currentlyMatched = false;
-            data.matchedBasedOn = null;
-            console.log('connected: ' + socket.id + ' ' + data.name);
-            users.push(data);
+        socket.on('authAndStoreUserInfo', function (data) {
+            jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
+                // check if auth is bad
+                if (!decoded || data.webSocketAuth !== '3346841372') {
+                    socket.emit('matchError', 'Authentication failed');
+                    socket.disconnect();
+                } else {
+                    // check if user is already matched or matching
+                    let userAlreadyMatched;
+
+                    users.forEach(user => {
+                        if (data.id === user.id) {
+                            socket.emit('matchError', 'You are already matching/matched!');
+                            socket.disconnect();
+
+                            userAlreadyMatched = true;
+                        }
+                    });
+
+                    if (userAlreadyMatched) {
+                        return;
+                    }
+
+                    delete data.token;
+                    delete data.webSocketAuth;
+                    data.clientId = socket.id;
+                    data.currentlyMatched = false;
+                    data.matchedBasedOn = null;
+                    console.log('connected: ' + socket.id + ' ' + data.name);
+                    users.push(data);
+                }
+            });
         });
 
         socket.on('disconnected', function (data) {
@@ -29,6 +59,10 @@ function chat(io) {
             });
 
             io.to(`${partnerClientId}`).emit('partnerDisconnected');
+            socket.disconnect();
+        });
+
+        socket.on('killSocketConnection', function () {
             socket.disconnect();
         });
 
@@ -82,9 +116,28 @@ function chat(io) {
             io.to(`${partnerClientId}`).emit('user-typed', data);
         });
 
+        socket.on('awardExp', function (data) {
+            jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
+                if (!decoded || data.webSocketAuth !== '3346841372') {
+                    socket.emit('matchError', 'Authentication failed');
+                    socket.disconnect();
+                } else {
+                    server.query(
+                        'UPDATE users SET experience = $1 WHERE id = $2',
+                        [data.exp, decoded.id],
+                        (error, results) => {
+                            if (error) {
+                                throw error
+                            }
+                        });
+                    socket.disconnect();
+                }
+            });
+        });
+
         socket.on('error', function (err) {
             console.log('received error from client:', socket.id);
-            socket.emit('error', err)
+            socket.emit('error', err);
         });
     });
 }
@@ -108,9 +161,9 @@ function searchForMatch(hostId, interests) {
                 }
             }
         }
-    } 
+    }
 
-    if (!interestMatchFound){
+    if (!interestMatchFound) {
         for (let i = 0; i < users.length; i++) {
             if (!users[i].currentlyMatched && users[i].clientId !== hostId) {
                 users[i].matchedBasedOn = null;
