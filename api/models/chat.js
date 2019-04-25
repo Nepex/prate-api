@@ -5,6 +5,7 @@ function chat(io) {
         socket.on('storeUserInfo', function (data) {
             data.clientId = socket.id;
             data.currentlyMatched = false;
+            data.matchedBasedOn = null;
             console.log('connected: ' + socket.id + ' ' + data.name);
             users.push(data);
         });
@@ -31,19 +32,9 @@ function chat(io) {
             socket.disconnect();
         });
 
-        socket.on('cancelMatching', function (data) {
-            users.forEach(user => {
-                if (user.clientId === socket.id) {
-                    users.splice(users.indexOf(user), 1);
-                    console.log(user.name + ' disconnected');
-                    socket.disconnect();
-                }
-            });
-        })
-
-        socket.on('searchForMatch', function (data) {
+        socket.on('searchForMatch', function (user) {
             // recall on front end with interval
-            const partner = searchForMatch(socket.id);
+            const partner = searchForMatch(socket.id, user.interests);
 
             if (!partner) {
                 socket.emit('matchResults', null)
@@ -51,11 +42,12 @@ function chat(io) {
                 let host;
                 const partnerClientId = partner.clientId;
 
-                // set host match
+                // set host match - set up host data to emit to partner
                 users.forEach(user => {
                     if (user.clientId === socket.id) {
                         user.currentlyMatched = true;
                         host = user;
+                        host.matchedBasedOn = partner.matchedBasedOn
                         socket.emit('matchResults', partner);
                     }
                 });
@@ -69,6 +61,16 @@ function chat(io) {
                 });
             }
         });
+
+        socket.on('cancelMatching', function (data) {
+            users.forEach(user => {
+                if (user.clientId === socket.id) {
+                    users.splice(users.indexOf(user), 1);
+                    console.log(user.name + ' disconnected');
+                    socket.disconnect();
+                }
+            });
+        })
 
         socket.on('message-send', function (data) {
             const partnerClientId = data.receiver;
@@ -87,10 +89,33 @@ function chat(io) {
     });
 }
 
-function searchForMatch(hostId) {
-    for (let i = 0; i < users.length; i++) {
-        if (!users[i].currentlyMatched && users[i].clientId !== hostId) {
-            return users[i];
+function searchForMatch(hostId, interests) {
+    let interestMatchFound = false;
+
+    if (interests.length > 0) {
+        // if user has interests, loop through all users, loop through selected interests, and loop through all looking users interests for a match
+        // else just match them with no interests
+        for (let i = 0; i < users.length; i++) {
+
+            for (let j = 0; j < users[i].interests.length; j++) {
+                for (let k = 0; k < interests.length; k++) {
+                    if (!users[i].currentlyMatched && users[i].clientId !== hostId && interests[k] === users[i].interests[j]) {
+                        interestMatchFound = true;
+                        users[i].matchedBasedOn = interests[k];
+
+                        return users[i];
+                    }
+                }
+            }
+        }
+    } 
+
+    if (!interestMatchFound){
+        for (let i = 0; i < users.length; i++) {
+            if (!users[i].currentlyMatched && users[i].clientId !== hostId) {
+                users[i].matchedBasedOn = null;
+                return users[i];
+            }
         }
     }
 
