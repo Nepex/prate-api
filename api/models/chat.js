@@ -146,10 +146,7 @@ function searchForMatch(hostId, interests) {
     let interestMatchFound = false;
 
     if (interests.length > 0) {
-        // if user has interests, loop through all users, loop through selected interests, and loop through all looking users interests for a match
-        // else just match them with no interests
         for (let i = 0; i < users.length; i++) {
-
             for (let j = 0; j < users[i].interests.length; j++) {
                 for (let k = 0; k < interests.length; k++) {
                     if (!users[i].currentlyMatched && users[i].clientId !== hostId && interests[k] === users[i].interests[j]) {
