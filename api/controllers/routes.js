@@ -3,11 +3,12 @@ const sessionsController = require('./sessionsController.js');
 
 function routes(app) {
     // users
-    app.get('/users', usersController.getUsers);
+    // app.get('/users', usersController.getUsers);
     app.get('/users/me', usersController.getUser);
     app.post('/users', usersController.validateCreateUser, usersController.createUser);
     app.put('/users/:id', usersController.validateUpdateUser, usersController.updateUser);
-    app.delete('/users/:id', usersController.deleteUser);
+    app.put('/users/avatar/:id', usersController.validateUpdateUserAvatar, usersController.updateUserAvatar);
+    // app.delete('/users/:id', usersController.deleteUser);
 
     // chat
 

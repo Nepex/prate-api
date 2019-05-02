@@ -24,6 +24,9 @@ const updateUserParams = Joi.object().keys({
   newPassword: Joi.string().trim().min(5).max(255).empty(null)
 }).and('oldPassword', 'newPassword');
 
+const updateUserAvatarParams = Joi.object().keys({
+  avatar: Joi.string().trim().max(25).required(),
+}).required();
 
 const getUsers = (request, response) => {
   server.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
@@ -171,6 +174,54 @@ const updateUser = (request, response) => {
   });
 }
 
+async function validateUpdateUserAvatar(request, response, next) {
+  const validationResult = Joi.validate(request.body, updateUserAvatarParams, { abortEarly: false });
+
+  if (validationResult.error) {
+    const errors = [];
+
+    for (let i = 0; i < validationResult.error.details.length; i++) {
+      errors.push(validationResult.error.details[i].message);
+    }
+
+    return response.status(400).send(errors).end();
+  } else {
+    return next();
+  }
+}
+
+const updateUserAvatar = (request, response) => {
+  const { avatar } = request.body
+  const token = request.headers.authorization.split(' ')[1];
+
+  jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+    if (!decoded) {
+      return response.status(400).send([err]).end();
+    }
+
+    server.query(
+      'SELECT * FROM users WHERE id = $1',
+      [decoded.id],
+      (error, results) => {
+        if (error) {
+          throw error
+        }
+
+        server.query(
+          'UPDATE users SET avatar = $1 WHERE id = $2',
+          [avatar, decoded.id],
+          (error, results) => {
+            if (error) {
+              throw error
+            }
+            response.status(200).send({ msg: 'success' });
+          });
+      }
+    )
+
+  });
+}
+
 const deleteUser = (request, response) => {
   const id = parseInt(request.params.id)
 
@@ -189,6 +240,8 @@ module.exports = {
   validateCreateUser: validateCreateUser,
   createUser: createUser,
   validateUpdateUser: validateUpdateUser,
+  validateUpdateUserAvatar: validateUpdateUserAvatar,
+  updateUserAvatar: updateUserAvatar,
   updateUser: updateUser,
-  deleteUser: deleteUser,
+  deleteUser: deleteUser
 }
