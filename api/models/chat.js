@@ -116,24 +116,25 @@ function chat(io) {
             io.to(`${partnerClientId}`).emit('user-typed', data);
         });
 
-        socket.on('awardExp', function (data) {
-            jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
-                if (!decoded || data.webSocketAuth !== '3346841372') {
-                    socket.emit('matchError', 'Authentication failed');
-                    socket.disconnect();
-                } else {
-                    server.query(
-                        'UPDATE users SET experience = $1 WHERE id = $2',
-                        [data.exp, decoded.id],
-                        (error, results) => {
-                            if (error) {
-                                throw error
-                            }
-                        });
-                    socket.disconnect();
-                }
-            });
-        });
+        // not a great practice
+        // socket.on('awardExp', function (data) {
+        //     jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
+        //         if (!decoded || data.webSocketAuth !== '3346841372') {
+        //             socket.emit('matchError', 'Authentication failed');
+        //             socket.disconnect();
+        //         } else {
+        //             server.query(
+        //                 'UPDATE users SET experience = $1 WHERE id = $2',
+        //                 [data.exp, decoded.id],
+        //                 (error, results) => {
+        //                     if (error) {
+        //                         throw error
+        //                     }
+        //                 });
+        //             socket.disconnect();
+        //         }
+        //     });
+        // });
 
         socket.on('error', function (err) {
             console.log('received error from client:', socket.id);
