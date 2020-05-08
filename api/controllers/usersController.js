@@ -20,7 +20,9 @@ const updateUserParams = Joi.object().keys({
   font_face: Joi.string().trim().max(25).required(),
   font_color: Joi.string().trim().hex().max(9).required(),
   bubble_color: Joi.string().trim().hex().max(9).required(),
-  experience: Joi.number().max(100000).required(),
+  experience: Joi.number().max(46963200).required(),
+  show_avatars: Joi.boolean().required(),
+  bubble_layout: Joi.string().trim().max(20).valid('alternating', 'all_left').required(),
   oldPassword: Joi.string().trim().min(5).max(255).empty(null),
   newPassword: Joi.string().trim().min(5).max(255).empty(null),
 }).and('oldPassword', 'newPassword');
@@ -134,7 +136,7 @@ async function validateUpdateUser(request, response, next) {
 }
 
 const updateUser = (request, response) => {
-  const { name, newPassword, interests, font_face, font_color, bubble_color, experience } = request.body
+  const { name, newPassword, interests, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout } = request.body
   const token = request.headers.authorization.split(' ')[1];
 
   jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
@@ -159,8 +161,8 @@ const updateUser = (request, response) => {
             password = hash;
           }
           server.query(
-            'UPDATE users SET name = $1, interests = $2, password = $3, font_face = $4, font_color = $5, bubble_color = $6, experience = $7 WHERE id = $8',
-            [name, interests, password, font_face, font_color, bubble_color, experience, decoded.id],
+            'UPDATE users SET name = $1, interests = $2, password = $3, font_face = $4, font_color = $5, bubble_color = $6, experience = $7, show_avatars = $8, bubble_layout = $9 WHERE id = $10',
+            [name, interests, password, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, decoded.id],
             (error, results) => {
               if (error) {
                 throw error
