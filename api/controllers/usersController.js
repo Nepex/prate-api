@@ -6,6 +6,7 @@ const _ = require('underscore');
 const user = require('../models/user');
 const jwt = require('jsonwebtoken');
 const sessionsController = require('./sessionsController.js');
+const nodemailer = require('nodemailer');
 
 const createUserParams = Joi.object().keys({
   name: Joi.string().trim().max(25).required(),
@@ -28,7 +29,11 @@ const updateUserParams = Joi.object().keys({
 }).and('oldPassword', 'newPassword');
 
 const updateUserAvatarParams = Joi.object().keys({
-  avatar: Joi.string().trim().max(25).required(),
+  avatar: Joi.string().trim().max(25).min(1).required(),
+}).required();
+
+const sendBugReportParams = Joi.object().keys({
+  message: Joi.string().trim().max(200).required(),
 }).required();
 
 const getUsers = (request, response) => {
@@ -225,6 +230,55 @@ const updateUserAvatar = (request, response) => {
   });
 }
 
+async function validateSendBugReport(request, response, next) {
+  const validationResult = Joi.validate(request.body, sendBugReportParams, { abortEarly: false });
+
+  if (validationResult.error) {
+    const errors = [];
+
+    for (let i = 0; i < validationResult.error.details.length; i++) {
+      errors.push(validationResult.error.details[i].message);
+    }
+
+    return response.status(400).send(errors).end();
+  } else {
+    return next();
+  }
+}
+
+const sendBugReport = (request, response) => {
+  const { message } = request.body
+
+  const token = request.headers.authorization.split(' ')[1];
+  jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+    if (!decoded) {
+      return response.status(400).send([err]).end();
+    }
+
+    let transport = nodemailer.createTransport({
+      service: "hotmail",
+      auth: {
+        user: "thechump@hotmail.com",
+        pass: "veilofcloud222"
+      }
+    });
+
+    const email = {
+      from: 'thechump@hotmail.com',
+      to: 'nepexx@gmail.com',
+      subject: 'Prate Bug Report',
+      text: message
+    };
+    transport.sendMail(email, function (err, info) {
+      if (err) {
+        return response.status(400).send({ msg: 'error' }).end();
+      } else {
+        response.status(200).send({ msg: 'success' });
+      }
+    });
+  });
+}
+
 const deleteUser = (request, response) => {
   const id = parseInt(request.params.id)
 
@@ -246,5 +300,7 @@ module.exports = {
   validateUpdateUserAvatar: validateUpdateUserAvatar,
   updateUserAvatar: updateUserAvatar,
   updateUser: updateUser,
-  deleteUser: deleteUser
+  deleteUser: deleteUser,
+  validateSendBugReport: validateSendBugReport,
+  sendBugReport: sendBugReport
 }
