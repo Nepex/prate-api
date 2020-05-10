@@ -17,9 +17,9 @@ async function authenicateUser(request, response) {
         const errors = [];
 
         for (let i = 0; i < validationResult.error.details.length; i++) {
-          errors.push(validationResult.error.details[i].message);
+            errors.push(validationResult.error.details[i].message);
         }
-    
+
         return response.status(400).send(errors).end();
     }
 
@@ -28,7 +28,11 @@ async function authenicateUser(request, response) {
 
     server.query('SELECT * FROM users WHERE email = $1', [lowerEmail], (error, result) => {
         if (error) {
-            throw error
+            throw error;
+        }
+
+        if (result.rows.length === 0) {
+            return response.status(400).send(['That email doesn\'t exist']).end();
         }
 
         bcrypt.compare(password, result.rows[0].password, function (err, res) {
