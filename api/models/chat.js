@@ -6,6 +6,8 @@ let users = [];
 
 function chat(io) {
     io.on('connection', (socket) => {
+        let inactivityTimer;
+
         socket.on('authAndStoreUserInfo', function (data) {
             jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
                 // check if auth is bad
@@ -47,14 +49,12 @@ function chat(io) {
             users.forEach(user => {
                 if (user.clientId === socket.id) {
                     users.splice(users.indexOf(user), 1);
-                    console.log(user.name + ' disconnected');
                 }
             });
 
             users.forEach(user => {
                 if (user.clientId === partnerClientId) {
                     users.splice(users.indexOf(user), 1);
-                    console.log(user.name + ' disconnected');
                 }
             });
 
@@ -108,33 +108,44 @@ function chat(io) {
 
         socket.on('message-send', function (data) {
             const partnerClientId = data.receiver;
+
             io.to(`${partnerClientId}`).emit('message-received', data);
+        });
+
+        socket.on('outer-app-invite-send', function (data) {
+            const partnerClientId = data.receiver;
+
+            io.to(`${partnerClientId}`).emit('outer-app-invite-received', data);
+        });
+
+        socket.on('outer-app-invite-accept', function (data) {
+            const partnerClientId = data.receiver;
+
+            io.to(`${partnerClientId}`).emit('outer-app-invite-accept', data);
+        });
+
+        socket.on('outer-app-invite-cancel', function (data) {
+            const partnerClientId = data.receiver;
+
+            io.to(`${partnerClientId}`).emit('outer-app-invite-cancel', data);
+        });
+
+        socket.on('close-yt-video', function (data) {
+            const partnerClientId = data.receiver;
+
+            io.to(`${partnerClientId}`).emit('close-yt-video', data);
+        });
+
+        socket.on('toggle-yt-play', function (data) {
+            const partnerClientId = data.receiver;
+
+            io.to(`${partnerClientId}`).emit('toggle-yt-play', data);
         });
 
         socket.on('user-typed', function (data) {
             const partnerClientId = data.receiver;
             io.to(`${partnerClientId}`).emit('user-typed', data);
         });
-
-        // not a great practice
-        // socket.on('awardExp', function (data) {
-        //     jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
-        //         if (!decoded || data.webSocketAuth !== '3346841372') {
-        //             socket.emit('matchError', 'Authentication failed');
-        //             socket.disconnect();
-        //         } else {
-        //             server.query(
-        //                 'UPDATE users SET experience = $1 WHERE id = $2',
-        //                 [data.exp, decoded.id],
-        //                 (error, results) => {
-        //                     if (error) {
-        //                         throw error
-        //                     }
-        //                 });
-        //             socket.disconnect();
-        //         }
-        //     });
-        // });
 
         socket.on('error', function (err) {
             console.log('received error from client:', socket.id);
