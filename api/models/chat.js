@@ -130,16 +130,10 @@ function chat(io) {
             io.to(`${partnerClientId}`).emit('outer-app-invite-cancel', data);
         });
 
-        socket.on('close-yt-video', function (data) {
+        socket.on('toggle-outer-app-function', function (data) {
             const partnerClientId = data.receiver;
 
-            io.to(`${partnerClientId}`).emit('close-yt-video', data);
-        });
-
-        socket.on('toggle-yt-play', function (data) {
-            const partnerClientId = data.receiver;
-
-            io.to(`${partnerClientId}`).emit('toggle-yt-play', data);
+            io.to(`${partnerClientId}`).emit('toggle-outer-app-function', data);
         });
 
         socket.on('user-typed', function (data) {
