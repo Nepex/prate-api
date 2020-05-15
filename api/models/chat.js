@@ -68,7 +68,7 @@ function chat(io) {
 
         socket.on('searchForMatch', function (user) {
             // recall on front end with interval
-            const partner = searchForMatch(socket.id, user.interests);
+            const partner = searchForMatch(socket.id, user.interests, user.enforce_interests);
 
             if (!partner) {
                 socket.emit('matchResults', null)
@@ -148,7 +148,7 @@ function chat(io) {
     });
 }
 
-function searchForMatch(hostId, interests) {
+function searchForMatch(hostId, interests, enforceInterests) {
     let interestMatchFound = false;
 
     if (interests.length > 0) {
@@ -166,11 +166,16 @@ function searchForMatch(hostId, interests) {
         }
     }
 
-    if (!interestMatchFound) {
-        for (let i = 0; i < users.length; i++) {
-            if (!users[i].currentlyMatched && users[i].clientId !== hostId) {
-                users[i].matchedBasedOn = null;
-                return users[i];
+    // find no common interests partner if enforce interests is false or if it's true but there are no interests selected
+    if ((enforceInterests && interests.length === 0) || !enforceInterests) {
+        console.log(enforceInterests)
+        if (!interestMatchFound) {
+            for (let i = 0; i < users.length; i++) {
+                if (!users[i].currentlyMatched && users[i].clientId !== hostId && ((users[i].enforce_interests && users[i].interests.length === 0) || !users[i].enforce_interests)) {
+                    users[i].matchedBasedOn = null;
+
+                    return users[i];
+                }
             }
         }
     }
