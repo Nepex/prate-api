@@ -168,7 +168,6 @@ function searchForMatch(hostId, interests, enforceInterests) {
 
     // find no common interests partner if enforce interests is false or if it's true but there are no interests selected
     if ((enforceInterests && interests.length === 0) || !enforceInterests) {
-        console.log(enforceInterests)
         if (!interestMatchFound) {
             for (let i = 0; i < users.length; i++) {
                 if (!users[i].currentlyMatched && users[i].clientId !== hostId && ((users[i].enforce_interests && users[i].interests.length === 0) || !users[i].enforce_interests)) {

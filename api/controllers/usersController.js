@@ -17,7 +17,7 @@ const createUserParams = Joi.object().keys({
 const updateUserParams = Joi.object().keys({
   id: Joi.string().guid({ version: ['uuidv4'] }).required(),
   name: Joi.string().trim().max(25).required(),
-  interests: Joi.array().max(8).items(Joi.string().trim().lowercase()).single(),
+  interests: Joi.array().max(30).items(Joi.string().trim().lowercase().max(20)).single(),
   font_face: Joi.string().trim().max(25).required(),
   font_color: Joi.string().trim().hex().max(9).required(),
   bubble_color: Joi.string().trim().hex().max(9).required(),
@@ -27,6 +27,7 @@ const updateUserParams = Joi.object().keys({
   color_theme: Joi.string().trim().max(20).valid('light', 'dark').required(),
   enforce_interests: Joi.boolean().required(),
   sounds: Joi.boolean().required(),
+  bio: Joi.string().trim().max(200).empty(null),
   oldPassword: Joi.string().trim().min(5).max(255).empty(null),
   newPassword: Joi.string().trim().min(5).max(255).empty(null),
 }).and('oldPassword', 'newPassword');
@@ -39,14 +40,14 @@ const sendBugReportParams = Joi.object().keys({
   message: Joi.string().trim().max(200).required(),
 }).required();
 
-const getUsers = (request, response) => {
-  server.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
-    if (error) {
-      throw error
-    }
-    response.status(200).json(results.rows);
-  })
-}
+// const getUsers = (request, response) => {
+//   server.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
+//     if (error) {
+//       throw error
+//     }
+//     response.status(200).json(results.rows);
+//   })
+// }
 
 async function getUser(request, response) {
   const token = request.headers.authorization.split(' ')[1];
@@ -67,6 +68,41 @@ async function getUser(request, response) {
     });
   });
 }
+
+async function getUserById(request, response) {
+  const id = request.params.id;
+  const token = request.headers.authorization.split(' ')[1];
+
+  if (id.length > 500) {
+    return response.status(400).send(['ID exceeds maximum characters.']).end();
+  }
+
+  jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+    if (!decoded) {
+      return response.status(400).send([err]).end();
+    }
+
+    server.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
+      if (error) {
+        throw error
+      }
+
+      if (results.rows.length === 0) {
+        return response.status(400).send(['No users found.']).end();
+      }
+
+      const user = results.rows[0];
+      delete user.password
+      response.status(200).json({
+        name: user.name,
+        experience: user.experience,
+        bio: user.bio,
+        avatar: user.avatar
+      });
+    });
+  });
+}
+
 
 async function validateCreateUser(request, response, next) {
   const { email } = request.body
@@ -144,7 +180,7 @@ async function validateUpdateUser(request, response, next) {
 }
 
 const updateUser = (request, response) => {
-  const { name, newPassword, interests, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds } = request.body
+  const { name, newPassword, interests, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, bio } = request.body
   const token = request.headers.authorization.split(' ')[1];
 
   jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
@@ -169,8 +205,8 @@ const updateUser = (request, response) => {
             password = hash;
           }
           server.query(
-            'UPDATE users SET name = $1, interests = $2, password = $3, font_face = $4, font_color = $5, bubble_color = $6, experience = $7, show_avatars = $8, bubble_layout = $9, color_theme = $10, enforce_interests = $11, sounds = $12 WHERE id = $13',
-            [name, interests, password, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, decoded.id],
+            'UPDATE users SET name = $1, interests = $2, password = $3, font_face = $4, font_color = $5, bubble_color = $6, experience = $7, show_avatars = $8, bubble_layout = $9, color_theme = $10, enforce_interests = $11, sounds = $12, bio = $13 WHERE id = $14',
+            [name, interests, password, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, bio, decoded.id],
             (error, results) => {
               if (error) {
                 throw error
@@ -295,7 +331,7 @@ const deleteUser = (request, response) => {
 
 
 module.exports = {
-  getUsers: getUsers,
+  getUserById: getUserById,
   getUser: getUser,
   validateCreateUser: validateCreateUser,
   createUser: createUser,
