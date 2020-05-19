@@ -27,7 +27,7 @@ const updateUserParams = Joi.object().keys({
   color_theme: Joi.string().trim().max(20).valid('light', 'dark').required(),
   enforce_interests: Joi.boolean().required(),
   sounds: Joi.boolean().required(),
-  bio: Joi.string().trim().max(200).empty(null),
+  bio: Joi.string().trim().max(200).empty('').allow(null),
   oldPassword: Joi.string().trim().min(5).max(255).empty(null),
   newPassword: Joi.string().trim().min(5).max(255).empty(null),
 }).and('oldPassword', 'newPassword');
