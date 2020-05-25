@@ -4,7 +4,7 @@ const app = express();
 const port = 3000
 
 const server = require('http').Server(app);
-const io = require('socket.io')(server);
+const io = require('socket.io')(server, {'pingInterval': 2000, 'pingTimeout': 5000});
 
 server.listen(port, () => {
   console.log(`App running on port ${port}.`);

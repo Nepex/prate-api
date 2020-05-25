@@ -6,8 +6,6 @@ let users = [];
 
 function chat(io) {
     io.on('connection', (socket) => {
-        let inactivityTimer;
-
         socket.on('authAndStoreUserInfo', function (data) {
             jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
                 // check if auth is bad
@@ -34,36 +32,12 @@ function chat(io) {
                     delete data.token;
                     delete data.webSocketAuth;
                     data.clientId = socket.id;
-                    data.currentlyMatched = false;
+                    data.currentlyMatchedWith = null;
                     data.matchedBasedOn = null;
                     console.log('connected: ' + socket.id + ' ' + data.name);
                     users.push(data);
                 }
             });
-        });
-
-        socket.on('disconnected', function (data) {
-            const partnerClientId = data.receiver;
-
-            // set host/partner disconnected
-            users.forEach(user => {
-                if (user.clientId === socket.id) {
-                    users.splice(users.indexOf(user), 1);
-                }
-            });
-
-            users.forEach(user => {
-                if (user.clientId === partnerClientId) {
-                    users.splice(users.indexOf(user), 1);
-                }
-            });
-
-            io.to(`${partnerClientId}`).emit('partnerDisconnected');
-            socket.disconnect();
-        });
-
-        socket.on('killSocketConnection', function () {
-            socket.disconnect();
         });
 
         socket.on('searchForMatch', function (user) {
@@ -79,9 +53,9 @@ function chat(io) {
                 // set host match - set up host data to emit to partner
                 users.forEach(user => {
                     if (user.clientId === socket.id) {
-                        user.currentlyMatched = true;
+                        user.currentlyMatchedWith = partnerClientId;
                         host = user;
-                        host.matchedBasedOn = partner.matchedBasedOn
+                        host.matchedBasedOn = partner.matchedBasedOn;
                         socket.emit('matchResults', partner);
                     }
                 });
@@ -89,22 +63,37 @@ function chat(io) {
                 // set partner match
                 users.forEach(user => {
                     if (user.clientId === partner.clientId) {
-                        user.currentlyMatched = true;
+                        user.currentlyMatchedWith = host.clientId;
                         io.to(`${partnerClientId}`).emit('matchResults', host);
                     }
                 });
             }
         });
 
-        socket.on('cancelMatching', function (data) {
+        socket.on('disconnect', function () {
+            let host;
+
             users.forEach(user => {
                 if (user.clientId === socket.id) {
+                    host = user;
                     users.splice(users.indexOf(user), 1);
-                    console.log(user.name + ' disconnected');
-                    socket.disconnect();
+
+
+                    // disconnect partner too if matched
+                    if (host.currentlyMatchedWith) {
+                        users.forEach(user => {
+                            if (user.clientId === host.currentlyMatchedWith) {
+                                users.splice(users.indexOf(user), 1);
+
+                                io.to(`${host.currentlyMatchedWith}`).emit('partnerDisconnected');
+                            }
+                        });
+                    }
                 }
             });
-        })
+
+            socket.disconnect();
+        });
 
         socket.on('message-send', function (data) {
             const partnerClientId = data.receiver;
@@ -155,7 +144,7 @@ function searchForMatch(hostId, interests, enforceInterests) {
         for (let i = 0; i < users.length; i++) {
             for (let j = 0; j < users[i].interests.length; j++) {
                 for (let k = 0; k < interests.length; k++) {
-                    if (!users[i].currentlyMatched && users[i].clientId !== hostId && interests[k] === users[i].interests[j]) {
+                    if (!users[i].currentlyMatchedWith && users[i].clientId !== hostId && interests[k] === users[i].interests[j]) {
                         interestMatchFound = true;
                         users[i].matchedBasedOn = interests[k];
 
@@ -170,7 +159,7 @@ function searchForMatch(hostId, interests, enforceInterests) {
     if ((enforceInterests && interests.length === 0) || !enforceInterests) {
         if (!interestMatchFound) {
             for (let i = 0; i < users.length; i++) {
-                if (!users[i].currentlyMatched && users[i].clientId !== hostId && ((users[i].enforce_interests && users[i].interests.length === 0) || !users[i].enforce_interests)) {
+                if (!users[i].currentlyMatchedWith && users[i].clientId !== hostId && ((users[i].enforce_interests && users[i].interests.length === 0) || !users[i].enforce_interests)) {
                     users[i].matchedBasedOn = null;
 
                     return users[i];
