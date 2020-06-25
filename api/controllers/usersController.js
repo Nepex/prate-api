@@ -27,6 +27,7 @@ const updateUserParams = Joi.object().keys({
   color_theme: Joi.string().trim().max(20).valid('light', 'dark').required(),
   enforce_interests: Joi.boolean().required(),
   sounds: Joi.boolean().required(),
+  img_previews: Joi.boolean().required(),
   bio: Joi.string().trim().max(200).empty('').allow(null),
   oldPassword: Joi.string().trim().min(5).max(255).empty(null),
   newPassword: Joi.string().trim().min(5).max(255).empty(null),
@@ -180,7 +181,7 @@ async function validateUpdateUser(request, response, next) {
 }
 
 const updateUser = (request, response) => {
-  const { name, newPassword, interests, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, bio } = request.body
+  const { name, newPassword, interests, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, img_previews, bio } = request.body
   const token = request.headers.authorization.split(' ')[1];
 
   jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
@@ -205,8 +206,8 @@ const updateUser = (request, response) => {
             password = hash;
           }
           server.query(
-            'UPDATE users SET name = $1, interests = $2, password = $3, font_face = $4, font_color = $5, bubble_color = $6, experience = $7, show_avatars = $8, bubble_layout = $9, color_theme = $10, enforce_interests = $11, sounds = $12, bio = $13 WHERE id = $14',
-            [name, interests, password, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, bio, decoded.id],
+            'UPDATE users SET name = $1, interests = $2, password = $3, font_face = $4, font_color = $5, bubble_color = $6, experience = $7, show_avatars = $8, bubble_layout = $9, color_theme = $10, enforce_interests = $11, sounds = $12, img_previews = $13, bio = $14 WHERE id = $15',
+            [name, interests, password, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, img_previews, bio, decoded.id],
             (error, results) => {
               if (error) {
                 throw error
