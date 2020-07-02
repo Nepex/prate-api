@@ -296,17 +296,19 @@ const sendBugReport = (request, response) => {
     }
 
     let transport = nodemailer.createTransport({
+      host: 'smtp-mail.outlook.com',
+      port: '587',
       service: "hotmail",
       auth: {
-        user: "thechump@hotmail.com",
-        pass: "veilofcloud222"
+        user: "pollrunner123@hotmail.com",
+        pass: "testtesttest123"
       }
     });
 
     const email = {
-      from: 'thechump@hotmail.com',
+      from: '"Prate" <pollrunner123@hotmail.com>',
       to: 'nepexx@gmail.com',
-      subject: 'Prate Bug Report',
+      subject: 'New Bug Report',
       text: message
     };
     transport.sendMail(email, function (err, info) {
