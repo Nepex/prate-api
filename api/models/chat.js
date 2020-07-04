@@ -5,42 +5,56 @@ const jwt = require('jsonwebtoken');
 let users = [];
 
 function chat(io) {
-    io.on('connection', (socket) => {
-        socket.on('authAndStoreUserInfo', function (data) {
-            jwt.verify(data.token, sessionsController.privateKey, function (err, decoded) {
-                // check if auth is bad
-                if (!decoded || data.webSocketAuth !== '3346841372') {
+    const chatNs = io.of('/chat');
+
+
+    chatNs.on('connection', (socket) => {
+        let userToken;
+        let wsAuth;
+
+        // check if auth is bad
+        function checkAuth(token, wsAuth) {
+            jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+                if (!decoded || wsAuth !== '3346841372') {
                     socket.emit('matchError', 'Authentication failed');
                     socket.disconnect();
-                } else {
-                    // check if user is already matched or matching
-                    let userAlreadyMatched;
-
-                    users.forEach(user => {
-                        if (data.id === user.id) {
-                            socket.emit('matchError', 'You are already matching/matched!');
-                            socket.disconnect();
-
-                            userAlreadyMatched = true;
-                        }
-                    });
-
-                    if (userAlreadyMatched) {
-                        return;
-                    }
-
-                    delete data.token;
-                    delete data.webSocketAuth;
-                    data.clientId = socket.id;
-                    data.currentlyMatchedWith = null;
-                    data.matchedBasedOn = null;
-                    console.log('connected: ' + socket.id + ' ' + data.name);
-                    users.push(data);
                 }
             });
+        }
+
+        socket.on('authAndStoreUserInfo', function (data) {
+            // check if user is already matched or matching
+            userToken = data.token;
+            wsAuth = data.webSocketAuth;
+            checkAuth(userToken, wsAuth);
+
+            let userAlreadyMatched;
+
+            users.forEach(user => {
+                if (data.id === user.id) {
+                    socket.emit('matchError', 'You are already matching/matched!');
+                    socket.disconnect();
+
+                    userAlreadyMatched = true;
+                }
+            });
+
+            if (userAlreadyMatched) {
+                return;
+            }
+            
+            delete data.token;
+            delete data.webSocketAuth;
+            data.clientId = socket.id;
+            data.currentlyMatchedWith = null;
+            data.matchedBasedOn = null;
+            console.log('connected: ' + socket.id + ' ' + data.name);
+            users.push(data);
         });
 
         socket.on('searchForMatch', function (user) {
+            checkAuth(userToken, wsAuth);
+
             // recall on front end with interval
             const partner = searchForMatch(socket.id, user.interests, user.enforce_interests);
 
@@ -64,7 +78,7 @@ function chat(io) {
                 users.forEach(user => {
                     if (user.clientId === partner.clientId) {
                         user.currentlyMatchedWith = host.clientId;
-                        io.to(`${partnerClientId}`).emit('matchResults', host);
+                        chatNs.to(`${partnerClientId}`).emit('matchResults', host);
                     }
                 });
             }
@@ -85,7 +99,7 @@ function chat(io) {
                             if (user.clientId === host.currentlyMatchedWith) {
                                 users.splice(users.indexOf(user), 1);
 
-                                io.to(`${host.currentlyMatchedWith}`).emit('partnerDisconnected');
+                                chatNs.to(`${host.currentlyMatchedWith}`).emit('partnerDisconnected');
                             }
                         });
                     }
@@ -96,38 +110,50 @@ function chat(io) {
         });
 
         socket.on('message-send', function (data) {
+            checkAuth(userToken, wsAuth);
+
             const partnerClientId = data.receiver;
 
-            io.to(`${partnerClientId}`).emit('message-received', data);
+            chatNs.to(`${partnerClientId}`).emit('message-received', data);
         });
 
         socket.on('outer-app-invite-send', function (data) {
+            checkAuth(userToken, wsAuth);
+
             const partnerClientId = data.receiver;
 
-            io.to(`${partnerClientId}`).emit('outer-app-invite-received', data);
+            chatNs.to(`${partnerClientId}`).emit('outer-app-invite-received', data);
         });
 
         socket.on('outer-app-invite-accept', function (data) {
+            checkAuth(userToken, wsAuth);
+
             const partnerClientId = data.receiver;
 
-            io.to(`${partnerClientId}`).emit('outer-app-invite-accept', data);
+            chatNs.to(`${partnerClientId}`).emit('outer-app-invite-accept', data);
         });
 
         socket.on('outer-app-invite-cancel', function (data) {
+            checkAuth(userToken, wsAuth);
+
             const partnerClientId = data.receiver;
 
-            io.to(`${partnerClientId}`).emit('outer-app-invite-cancel', data);
+            chatNs.to(`${partnerClientId}`).emit('outer-app-invite-cancel', data);
         });
 
         socket.on('toggle-outer-app-function', function (data) {
+            checkAuth(userToken, wsAuth);
+
             const partnerClientId = data.receiver;
 
-            io.to(`${partnerClientId}`).emit('toggle-outer-app-function', data);
+            chatNs.to(`${partnerClientId}`).emit('toggle-outer-app-function', data);
         });
 
         socket.on('user-typed', function (data) {
+            checkAuth(userToken, wsAuth);
+
             const partnerClientId = data.receiver;
-            io.to(`${partnerClientId}`).emit('user-typed', data);
+            chatNs.to(`${partnerClientId}`).emit('user-typed', data);
         });
 
         socket.on('error', function (err) {

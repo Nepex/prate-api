@@ -20,7 +20,7 @@ async function authenicateUser(request, response) {
             errors.push(validationResult.error.details[i].message);
         }
 
-        return response.status(400).send(errors).end();
+        return response.status(400).send(errors);
     }
 
     const { email, password } = request.body
@@ -28,11 +28,11 @@ async function authenicateUser(request, response) {
 
     server.query('SELECT * FROM users WHERE email = $1', [lowerEmail], (error, result) => {
         if (error) {
-            throw error;
+            return response.status(400).send(['Error loading data']);
         }
 
         if (result.rows.length === 0) {
-            return response.status(400).send(['That email doesn\'t exist']).end();
+            return response.status(400).send(['That email doesn\'t exist']);
         }
 
         bcrypt.compare(password, result.rows[0].password, function (err, res) {
@@ -44,7 +44,7 @@ async function authenicateUser(request, response) {
 
                 return response.status(201).send({ msg: 'success', token: token });
             } else {
-                return response.status(400).send(['Incorrect email or password']).end();
+                return response.status(400).send(['Incorrect email or password']);
             }
         });
     })

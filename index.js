@@ -32,3 +32,6 @@ require('./api/controllers/routes')(app);
 
 // initiate chat sockets
 require('./api/models/chat')(io);
+
+// initiate friends sockets
+require('./api/models/friends')(io);

@@ -5,7 +5,7 @@ async function checkEmailExists(email) {
     return new Promise(function (resolve, reject) {
         server.query('SELECT * FROM users WHERE email = $1', [email], (error, results) => {
             if (error) {
-                throw error
+                return response.status(400).send(['Error loading data']);
             }
 
             const rows = results.rows;
@@ -23,7 +23,7 @@ async function checkPasswordCorrect(id, password) {
     return new Promise(function (resolve, reject) {
         server.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
             if (error) {
-                throw error
+                return response.status(400).send(['Error loading data']);
             }
 
             bcrypt.compare(password, results.rows[0].password, function (err, res) {

@@ -7,6 +7,7 @@ const user = require('../models/user');
 const jwt = require('jsonwebtoken');
 const sessionsController = require('./sessionsController.js');
 const nodemailer = require('nodemailer');
+const friends = require('../models/friends.js');
 
 const createUserParams = Joi.object().keys({
   name: Joi.string().trim().max(25).required(),
@@ -60,7 +61,7 @@ async function getUser(request, response) {
 
     server.query('SELECT * FROM users WHERE id = $1', [decoded.id], (error, results) => {
       if (error) {
-        throw error
+        return response.status(400).send(['Error loading data']);
       }
 
       const user = results.rows[0];
@@ -74,8 +75,8 @@ async function getUserById(request, response) {
   const id = request.params.id;
   const token = request.headers.authorization.split(' ')[1];
 
-  if (id.length > 500) {
-    return response.status(400).send(['ID exceeds maximum characters.']).end();
+  if (id.length > 100) {
+    return response.status(400).send(['ID exceeds maximum characters.']);
   }
 
   jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
@@ -85,11 +86,11 @@ async function getUserById(request, response) {
 
     server.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
       if (error) {
-        throw error
+        return response.status(400).send(['Error loading data']);
       }
 
       if (results.rows.length === 0) {
-        return response.status(400).send(['No users found.']).end();
+        return response.status(400).send(['No users found.']);
       }
 
       const user = results.rows[0];
@@ -97,6 +98,8 @@ async function getUserById(request, response) {
       response.status(200).json({
         name: user.name,
         experience: user.experience,
+        friend_requests: user.friend_requests,
+        friends: user.friends,
         bio: user.bio,
         avatar: user.avatar
       });
@@ -116,7 +119,7 @@ async function validateCreateUser(request, response, next) {
       errors.push(validationResult.error.details[i].message);
     }
 
-    return response.status(400).send(errors).end();
+    return response.status(400).send(errors);
   }
 
   // future tip: use promise.all if multiple validations from db are required
@@ -124,7 +127,7 @@ async function validateCreateUser(request, response, next) {
   user.checkEmailExists(lowerEmail)
     .then(function (existingEmail) {
       if (existingEmail) {
-        return response.status(400).send(['Email already exists']).end();
+        return response.status(400).send(['Email already exists']);
       }
       return next();
     }).catch(function (error) { console.log(error); });
@@ -139,7 +142,7 @@ async function createUser(request, response) {
 
     server.query('INSERT INTO users (id, name, email, password) VALUES ($1, $2, $3, $4)', [id, name, lowerEmail, hash], (error, result) => {
       if (error) {
-        throw error
+        return response.status(400).send(['Error loading data']);
       }
       return response.status(201).send({ msg: 'success' });
     })
@@ -159,7 +162,7 @@ async function validateUpdateUser(request, response, next) {
       errors.push(validationResult.error.details[i].message);
     }
 
-    return response.status(400).send(errors).end();
+    return response.status(400).send(errors);
   }
 
   if (newPassword) {
@@ -172,7 +175,7 @@ async function validateUpdateUser(request, response, next) {
         .then(function (res) {
           return next();
         }).catch(function (error) {
-          return response.status(400).send(['Incorrect password']).end();
+          return response.status(400).send(['Incorrect password']);
         });
     });
   } else {
@@ -194,7 +197,7 @@ const updateUser = (request, response) => {
       [decoded.id],
       (error, results) => {
         if (error) {
-          throw error
+          return response.status(400).send(['Error loading data']);
         }
 
         bcrypt.hash(newPassword, 10, function (err, hash) {
@@ -210,7 +213,7 @@ const updateUser = (request, response) => {
             [name, interests, password, font_face, font_color, bubble_color, experience, show_avatars, bubble_layout, color_theme, enforce_interests, sounds, img_previews, bio, decoded.id],
             (error, results) => {
               if (error) {
-                throw error
+                return response.status(400).send(['Error loading data']);
               }
               response.status(200).send({ msg: 'success' });
             });
@@ -232,7 +235,7 @@ async function validateUpdateUserAvatar(request, response, next) {
       errors.push(validationResult.error.details[i].message);
     }
 
-    return response.status(400).send(errors).end();
+    return response.status(400).send(errors);
   } else {
     return next();
   }
@@ -252,7 +255,7 @@ const updateUserAvatar = (request, response) => {
       [decoded.id],
       (error, results) => {
         if (error) {
-          throw error
+          return response.status(400).send(['Error loading data']);
         }
 
         server.query(
@@ -260,7 +263,7 @@ const updateUserAvatar = (request, response) => {
           [avatar, decoded.id],
           (error, results) => {
             if (error) {
-              throw error
+              return response.status(400).send(['Error loading data']);
             }
             response.status(200).send({ msg: 'success' });
           });
@@ -280,7 +283,7 @@ async function validateSendBugReport(request, response, next) {
       errors.push(validationResult.error.details[i].message);
     }
 
-    return response.status(400).send(errors).end();
+    return response.status(400).send(errors);
   } else {
     return next();
   }
@@ -313,7 +316,7 @@ const sendBugReport = (request, response) => {
     };
     transport.sendMail(email, function (err, info) {
       if (err) {
-        return response.status(400).send({ msg: 'error' }).end();
+        return response.status(400).send({ msg: 'error' });
       } else {
         response.status(200).send({ msg: 'success' });
       }
@@ -321,16 +324,16 @@ const sendBugReport = (request, response) => {
   });
 }
 
-const deleteUser = (request, response) => {
-  const id = parseInt(request.params.id)
+// const deleteUser = (request, response) => {
+//   const id = request.params.id;
 
-  server.query('DELETE FROM users WHERE id = $1', [id], (error, results) => {
-    if (error) {
-      throw error
-    }
-    response.status(200).send(`User deleted with ID: ${id}`);
-  })
-}
+//   server.query('DELETE FROM users WHERE id = $1', [id], (error, results) => {
+//     if (error) {
+//       return response.status(400).send(['Error loading data']);
+//     }
+//     response.status(200).send(`User deleted with ID: ${id}`);
+//   })
+// }
 
 
 module.exports = {
@@ -342,7 +345,7 @@ module.exports = {
   validateUpdateUserAvatar: validateUpdateUserAvatar,
   updateUserAvatar: updateUserAvatar,
   updateUser: updateUser,
-  deleteUser: deleteUser,
+  // deleteUser: deleteUser,
   validateSendBugReport: validateSendBugReport,
   sendBugReport: sendBugReport
 }

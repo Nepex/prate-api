@@ -1,4 +1,5 @@
 const usersController = require('./usersController.js');
+const friendsController = require('./friendsController.js');
 const sessionsController = require('./sessionsController.js');
 
 function routes(app) {
@@ -13,6 +14,9 @@ function routes(app) {
     // app.delete('/users/:id', usersController.deleteUser);
 
     // chat
+
+    // friends
+    app.put('/friends/send-friend-request', friendsController.validateSendFriendRequest, friendsController.sendFriendRequest);
 
     // sessions
     app.post('/sessions/auth', sessionsController.authenicateUser);
