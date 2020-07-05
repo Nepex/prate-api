@@ -61,8 +61,8 @@ async function sendFriendRequest(request, response) {
 
                 let receiverFriendRequests = receiverResults.rows[0].friend_requests;
 
-                if (receiverFriendRequests >= 50) {
-                    return response.status(400).send(['Friendlist is at maximum capacity']);
+                if (receiverFriendRequests.length >= 50) {
+                    return response.status(400).send(['Friend requests is at maximum capacity']);
                 }
 
                 if (receiverFriendRequests.indexOf(decoded.id) > -1) {
@@ -216,6 +216,10 @@ async function acceptFriendRequest(request, response) {
 
                 let senderFriendRequests = senderResults.rows[0].friend_requests;
                 let senderFriends = senderResults.rows[0].friends;
+
+                if (senderFriends.length >= 50) {
+                    return response.status(400).send(['Friendlist is at maximum capacity']);
+                }
 
                 senderFriendRequests.splice(senderFriendRequests.indexOf(id), 1);
                 senderFriends.push(id);
