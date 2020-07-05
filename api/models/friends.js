@@ -49,6 +49,27 @@ function friends(io) {
             socket.disconnect();
         });
 
+        socket.on('get-online-friends', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            let onlineFriends = [];
+
+            data.forEach(friendId => {
+                users.forEach(user => {
+                    if (user.id === friendId) {
+                        onlineFriends.push({
+                            id: user.id,
+                            name: user.name,
+                            avatar: user.avatar,
+                            status: user.status
+                        });
+                    }
+                });
+            });
+
+            friendsNs.to(`${socket.id}`).emit('receive-online-friends', onlineFriends);
+        });
+
         socket.on('friend-request-send', function (data) {
             checkAuth(userToken, wsAuth);
 

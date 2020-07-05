@@ -180,7 +180,8 @@ const getFriends = (request, response) => {
                             friends.push({
                                 id: user.id,
                                 name: user.name,
-                                avatar: user.avatar
+                                avatar: user.avatar,
+                                status: 'offline'
                             });
                         }
                     });
@@ -221,13 +222,21 @@ async function acceptFriendRequest(request, response) {
                     return response.status(400).send(['Friendlist is at maximum capacity']);
                 }
 
+                if (senderFriendRequests.indexOf(id) < 0) {
+                    return response.status(400).send(['No active friend request for that user']);
+                }
+
+                if (senderFriends.indexOf(id) > -1) {
+                    return response.status(400).send(['You\'re already friends with that user']);
+                }
+
                 senderFriendRequests.splice(senderFriendRequests.indexOf(id), 1);
                 senderFriends.push(id);
                 
                 // add the friend to the user accepting the request
                 server.query(
-                    'UPDATE users SET friends = $1 WHERE id = $2',
-                    [senderFriends, decoded.id],
+                    'UPDATE users SET friends = $1, friend_requests = $2 WHERE id = $3',
+                    [senderFriends, senderFriendRequests, decoded.id],
                     (error, senderUpdateResults) => {
                         if (error) {
                             return response.status(400).send(['Error loading data']);
@@ -244,7 +253,7 @@ async function acceptFriendRequest(request, response) {
 
                                 let receiverFriends = receiverResults.rows[0].friends;
 
-                                receiverFriends.push(id);
+                                receiverFriends.push(decoded.id);
                                 
                                 // add the user that has accepted their friend request
                                 server.query(
