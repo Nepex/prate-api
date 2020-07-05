@@ -43,28 +43,29 @@ async function sendFriendRequest(request, response) {
         server.query(
             'SELECT * FROM users WHERE id = $1 OR email = $2',
             [id, email],
-            (error, results) => {
+            (error, receiverResults) => {
                 if (error) {
                     return response.status(400).send(['Error loading data']);
                 }
 
                 // start validating for receiver
-                if (results.rows.length === 0) {
+                if (receiverResults.rows.length === 0) {
                     return response.status(400).send(['No users found']);
                 }
 
-                let receiverFriendRequests = results.rows[0].friend_requests;
+                if (decoded.id === id) {
+                    return response.status(400).send(['You cannot add yourself']);
+                }
+
+
+                let receiverFriendRequests = receiverResults.rows[0].friend_requests;
 
                 if (receiverFriendRequests >= 50) {
                     return response.status(400).send(['Friendlist is at maximum capacity']);
                 }
 
                 if (receiverFriendRequests.indexOf(decoded.id) > -1) {
-                    return response.status(400).send(['Friend request already exists.']);
-                }
-
-                if (decoded.id === results.rows[0].id || email === results.rows[0].email) {
-                    return response.status(400).send(['You cannot add yourself.']);
+                    return response.status(400).send(['Friend request already exists']);
                 }
 
                 receiverFriendRequests.push(decoded.id);
@@ -72,15 +73,19 @@ async function sendFriendRequest(request, response) {
                 // get sender info - make sure sender doesn't already have a pending request from receiver, then finally insert friend request
                 server.query('SELECT * FROM users WHERE id = $1',
                     [decoded.id],
-                    (error, results) => {
+                    (error, senderResults) => {
                         if (error) {
                             return response.status(400).send(['Error loading data']);
                         }
 
-                        let senderFriendRequests = results.rows[0].friend_requests;
+                        let senderFriendRequests = senderResults.rows[0].friend_requests;
 
-                        if (senderFriendRequests.indexOf(id) > -1) {
-                            return response.status(400).send(['Friend request already exists.']);
+                        if (email === senderResults.rows[0].email) {
+                            return response.status(400).send(['You cannot add yourself']);
+                        }
+
+                        if (senderFriendRequests.indexOf(receiverResults.rows[0].id) > -1) {
+                            return response.status(400).send(['Friend request already exists']);
                         }
 
                         server.query(
@@ -97,7 +102,50 @@ async function sendFriendRequest(request, response) {
     });
 }
 
+const getFriends = (request, response) => {
+    const token = request.headers.authorization.split(' ')[1];
+
+    jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+        if (!decoded) {
+            return response.status(400).send([err]).end();
+        }
+
+        server.query('SELECT * FROM users WHERE id = $1', [decoded.id], (error, userResults) => {
+            if (error) {
+                return response.status(400).send(['Error loading data']);
+            }
+
+            const userFriendIds = userResults.rows[0].friend_requests;
+
+            server.query('SELECT * FROM users ORDER BY name ASC', (error, allUsersResults) => {
+                if (error) {
+                    return response.status(400).send(['Error loading data']);
+                }
+
+                let friends = [];
+
+                const allUsers = allUsersResults.rows;
+
+                allUsers.forEach(user => {
+                    userFriendIds.forEach(friendId => {
+                        if (user.id === friendId) {
+                            friends.push({
+                                id: user.id,
+                                name: user.name,
+                                avatar: user.avatar
+                            });
+                        }
+                    });
+                });
+
+                response.status(200).json(friends);
+            });
+        });
+    });
+}
+
 module.exports = {
     sendFriendRequest: sendFriendRequest,
-    validateSendFriendRequest: validateSendFriendRequest
+    validateSendFriendRequest: validateSendFriendRequest,
+    getFriends: getFriends
 }

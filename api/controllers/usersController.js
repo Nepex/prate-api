@@ -76,7 +76,7 @@ async function getUserById(request, response) {
   const token = request.headers.authorization.split(' ')[1];
 
   if (id.length > 100) {
-    return response.status(400).send(['ID exceeds maximum characters.']);
+    return response.status(400).send(['ID exceeds maximum characters']);
   }
 
   jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
@@ -90,7 +90,7 @@ async function getUserById(request, response) {
       }
 
       if (results.rows.length === 0) {
-        return response.status(400).send(['No users found.']);
+        return response.status(400).send(['No users found']);
       }
 
       const user = results.rows[0];
@@ -316,7 +316,7 @@ const sendBugReport = (request, response) => {
     };
     transport.sendMail(email, function (err, info) {
       if (err) {
-        return response.status(400).send({ msg: 'error' });
+        return response.status(400).send(['Error sending data']);
       } else {
         response.status(200).send({ msg: 'success' });
       }

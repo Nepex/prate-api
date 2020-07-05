@@ -12,11 +12,10 @@ function chat(io) {
         let userToken;
         let wsAuth;
 
-        // check if auth is bad
+        // check if auth is bad - this bombs sometimes on requests..mess around with it later
         function checkAuth(token, wsAuth) {
             jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
                 if (!decoded || wsAuth !== '3346841372') {
-                    socket.emit('matchError', 'Authentication failed');
                     socket.disconnect();
                 }
             });
@@ -42,7 +41,7 @@ function chat(io) {
             if (userAlreadyMatched) {
                 return;
             }
-            
+
             delete data.token;
             delete data.webSocketAuth;
             data.clientId = socket.id;
@@ -54,7 +53,7 @@ function chat(io) {
 
         socket.on('searchForMatch', function (user) {
             checkAuth(userToken, wsAuth);
-
+            
             // recall on front end with interval
             const partner = searchForMatch(socket.id, user.interests, user.enforce_interests);
 
@@ -85,6 +84,8 @@ function chat(io) {
         });
 
         socket.on('disconnect', function () {
+            checkAuth(userToken, wsAuth);
+
             let host;
 
             users.forEach(user => {
@@ -113,7 +114,6 @@ function chat(io) {
             checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
-
             chatNs.to(`${partnerClientId}`).emit('message-received', data);
         });
 
@@ -121,7 +121,6 @@ function chat(io) {
             checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
-
             chatNs.to(`${partnerClientId}`).emit('outer-app-invite-received', data);
         });
 
@@ -129,7 +128,6 @@ function chat(io) {
             checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
-
             chatNs.to(`${partnerClientId}`).emit('outer-app-invite-accept', data);
         });
 
@@ -137,7 +135,6 @@ function chat(io) {
             checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
-
             chatNs.to(`${partnerClientId}`).emit('outer-app-invite-cancel', data);
         });
 
@@ -145,20 +142,19 @@ function chat(io) {
             checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
-
             chatNs.to(`${partnerClientId}`).emit('toggle-outer-app-function', data);
         });
 
         socket.on('user-typed', function (data) {
             checkAuth(userToken, wsAuth);
-
+            
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('user-typed', data);
         });
 
         socket.on('error', function (err) {
             console.log('received error from client:', socket.id);
-            socket.emit('error', err);
+            // socket.emit('error', err);
         });
     });
 }

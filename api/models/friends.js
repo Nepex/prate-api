@@ -11,11 +11,10 @@ function friends(io) {
         let userToken;
         let wsAuth;
 
-        // check if auth is bad
+        // find bette ws auth
         function checkAuth(token, wsAuth) {
             jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
                 if (!decoded || wsAuth !== '3346841372') {
-                    socket.emit('error', 'Authentication failed');
                     socket.disconnect();
                 }
             });
@@ -35,6 +34,8 @@ function friends(io) {
         });
 
         socket.on('disconnect', function () {
+            checkAuth(userToken, wsAuth);
+
             users.forEach(user => {
                 if (user.clientId === socket.id) {
                     users.splice(users.indexOf(user), 1);
