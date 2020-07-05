@@ -96,6 +96,7 @@ async function getUserById(request, response) {
       const user = results.rows[0];
       delete user.password
       response.status(200).json({
+        id: user.id,
         name: user.name,
         experience: user.experience,
         friend_requests: user.friend_requests,
