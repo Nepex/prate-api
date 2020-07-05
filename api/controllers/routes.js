@@ -17,9 +17,11 @@ function routes(app) {
 
     // friends
     app.put('/friends/send-friend-request', friendsController.validateSendFriendRequest, friendsController.sendFriendRequest);
+    app.put('/friends/accept-friend-request/:id', friendsController.acceptFriendRequest);
     app.put('/friends/deny-friend-request/:id', friendsController.denyFriendRequest);
+    app.put('/friends/remove-friend/:id', friendsController.removeFriend);
     app.get('/friends/get-friends', friendsController.getFriends);
-
+    app.get('/friends/get-friend-requests', friendsController.getFriendRequests);
 
     // sessions
     app.post('/sessions/auth', sessionsController.authenicateUser);

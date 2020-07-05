@@ -53,13 +53,11 @@ function friends(io) {
             checkAuth(userToken, wsAuth);
 
             users.forEach(user => {
-                if (data.receiverId && user.id === data.receiverId) {
+                if (data.receiverId && user.id === data.receiverId && user.id !== data.senderId) {
                     const receiverClientId = user.clientId;
-                    user.friend_requests.push(data.senderId);
                     friendsNs.to(`${receiverClientId}`).emit('friend-request-received', data);
-                } else if (data.receiverEmail && user.email === data.receiverEmail) {
+                } else if (data.receiverEmail && user.email === data.receiverEmail && data.receiverEmail !== data.senderEmail) {
                     const receiverClientId = user.clientId;
-                    user.friend_requests.push(data.senderId);
                     friendsNs.to(`${receiverClientId}`).emit('friend-request-received', data);
                 }
             });
