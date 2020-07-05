@@ -144,8 +144,45 @@ const getFriends = (request, response) => {
     });
 }
 
+
+async function denyFriendRequest(request, response) {
+    const id = request.params.id;
+    const token = request.headers.authorization.split(' ')[1];
+
+    if (id.length > 100) {
+        return response.status(400).send(['ID exceeds maximum characters']);
+    }
+
+    jwt.verify(token, sessionsController.privateKey, function (err, decoded) {
+        if (!decoded) {
+            return response.status(400).send([err]).end();
+        }
+
+        server.query(
+            'SELECT * FROM users WHERE id = $1',
+            [decoded.id],
+            (error, userResults) => {
+
+                let userFriendRequests = userResults.rows[0].friend_requests;
+
+                userFriendRequests.splice(userFriendRequests.indexOf(id), 1);
+
+                server.query(
+                    'UPDATE users SET friend_requests = $1 WHERE id = $2',
+                    [userFriendRequests, decoded.id],
+                    (error, results) => {
+                        if (error) {
+                            return response.status(400).send(['Error loading data']);
+                        }
+                        response.status(200).send({ msg: 'success' });
+                    });
+            });
+    });
+}
+
 module.exports = {
     sendFriendRequest: sendFriendRequest,
     validateSendFriendRequest: validateSendFriendRequest,
-    getFriends: getFriends
+    getFriends: getFriends,
+    denyFriendRequest: denyFriendRequest
 }

@@ -17,7 +17,9 @@ function routes(app) {
 
     // friends
     app.put('/friends/send-friend-request', friendsController.validateSendFriendRequest, friendsController.sendFriendRequest);
+    app.put('/friends/deny-friend-request/:id', friendsController.denyFriendRequest);
     app.get('/friends/get-friends', friendsController.getFriends);
+
 
     // sessions
     app.post('/sessions/auth', sessionsController.authenicateUser);
