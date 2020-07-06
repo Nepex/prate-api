@@ -333,7 +333,7 @@ async function removeFriend(request, response) {
 
                 let senderFriends = senderResults.rows[0].friends;
 
-                senderFriendRequests.splice(senderFriends.indexOf(id), 1);
+                senderFriends.splice(senderFriends.indexOf(id), 1);
 
                 // remove the friend from their friends
                 server.query(

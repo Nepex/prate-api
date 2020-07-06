@@ -31,6 +31,25 @@ function friends(io) {
             data.clientId = socket.id;
             console.log('connected: ' + socket.id + ' ' + data.name);
             users.push(data);
+
+            // emit to each online friend that user has come online
+            data.friends.forEach(friend => {
+                users.forEach(usr => {
+                    if (usr.id === friend) {
+                        const receiverClientId = usr.clientId;
+
+                        const body = {
+                            id: data.id,
+                            name: data.name,
+                            avatar: data.avatar,
+                            status: 'online',
+                            firstConnect: true
+                        };
+
+                        friendsNs.to(`${receiverClientId}`).emit('friend-data-change-received', body);
+                    }
+                });
+            });
         });
 
         socket.on('disconnect', function () {
@@ -38,6 +57,25 @@ function friends(io) {
 
             users.forEach(user => {
                 if (user.clientId === socket.id) {
+                    // emit to each online friend that user has disconnected
+                    user.friends.forEach(friend => {
+                        users.forEach(usr => {
+                            if (usr.id === friend) {
+                                const receiverClientId = usr.clientId;
+
+                                const body = {
+                                    id: user.id,
+                                    name: user.name,
+                                    avatar: user.avatar,
+                                    status: 'offline'
+                                };
+
+                                friendsNs.to(`${receiverClientId}`).emit('friend-data-change-received', body);
+                            }
+                        });
+                    });
+
+                    // splice user
                     users.splice(users.indexOf(user), 1);
                     console.log(`${user.name} disconnected`)
                 }
@@ -48,6 +86,7 @@ function friends(io) {
             socket.disconnect();
         });
 
+        // gets all friends currently connected
         socket.on('get-online-friends', function (data) {
             checkAuth(userToken, wsAuth);
 
@@ -69,12 +108,11 @@ function friends(io) {
             friendsNs.to(`${socket.id}`).emit('receive-online-friends', onlineFriends);
         });
 
+        // checks a single friend's status
         socket.on('check-friend-status-send', function (data) {
             checkAuth(userToken, wsAuth);
 
             let body;
-
-            console.log(socket.id);
 
             users.forEach(user => {
                 if (data.id === user.id) {
@@ -111,12 +149,21 @@ function friends(io) {
         socket.on('accepted-friend-request-send', function (data) {
             checkAuth(userToken, wsAuth);
 
+            // push in new friend for logged in sender
+            users.forEach(user => {
+                if (user.id === data.userSendingId) {
+                    user.friends.push(data.userReceivingId);
+                }
+            });
+
             // search for user receiving accepted friend, see if they're online
+            // if they're online, push in the received friend
             users.forEach(user => {
                 if (data.userReceivingId === user.id) {
                     const receiverClientId = user.clientId;
+                    user.friends.push(data.userSendingId);
 
-                    // if they are..give them the user that accepted their friend request
+                    // give them the user that accepted their friend request
                     users.forEach(usr => {
                         if (data.userSendingId === usr.id) {
                             const body = {
@@ -130,6 +177,69 @@ function friends(io) {
                         }
                     });
 
+                }
+            });
+        });
+
+        socket.on('friend-removal-send', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            //splice out removed friend for logged in sender
+            users.forEach(user => {
+                if (user.id === data.userSendingId) {
+                    user.friends.splice(user.friends.indexOf(data.userReceivingId), 1);
+                }
+            });
+
+            // search for user receiving removed friend, see if they're online
+            // if they're online, splice out the sender
+            users.forEach(user => {
+                if (data.userReceivingId === user.id) {
+                    const receiverClientId = user.clientId;
+                    user.friends.splice(user.friends.indexOf(data.userSendingId), 1);
+
+                    // if they are..give them the user that accepted their friend request
+                    users.forEach(usr => {
+                        if (data.userSendingId === usr.id) {
+                            const body = {
+                                id: usr.id,
+                            };
+
+                            friendsNs.to(`${receiverClientId}`).emit('friend-removal-received', body);
+                        }
+                    });
+                }
+            });
+        });
+
+        // emits to friends whenever the user changes their status/avatar/name
+        socket.on('friend-data-change-send', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            // update sending user
+            users.forEach(user => {
+                if (user.id === data.id) {
+                    user.name = data.name;
+                    user.avatar = data.avatar;
+                    user.status = data.status;
+
+                    // emit to each online friend
+                    user.friends.forEach(friend => {
+                        users.forEach(usr => {
+                            if (usr.id === friend) {
+                                const receiverClientId = usr.clientId;
+
+                                const body = {
+                                    id: data.id,
+                                    name: data.name,
+                                    avatar: data.avatar,
+                                    status: data.status
+                                };
+
+                                friendsNs.to(`${receiverClientId}`).emit('friend-data-change-received', body);
+                            }
+                        });
+                    });
                 }
             });
         });
