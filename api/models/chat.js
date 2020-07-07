@@ -1,6 +1,7 @@
 const server = require('../../connection.js');
 const sessionsController = require('../controllers/sessionsController.js');
 const jwt = require('jsonwebtoken');
+const user = require('./user.js');
 
 let users = [];
 
@@ -55,7 +56,7 @@ function chat(io) {
             checkAuth(userToken, wsAuth);
             
             // recall on front end with interval
-            const partner = searchForMatch(socket.id, user.interests, user.enforce_interests);
+            const partner = searchForMatch(socket.id, user.interests, user.enforce_interests, user.forceMatchedWith);
 
             if (!partner) {
                 socket.emit('matchResults', null)
@@ -159,8 +160,17 @@ function chat(io) {
     });
 }
 
-function searchForMatch(hostId, interests, enforceInterests) {
+function searchForMatch(hostId, interests, enforceInterests, forceMatchedWith) {
     let interestMatchFound = false;
+
+    if (forceMatchedWith) {
+        users.forEach(user => {
+            if (user.id === forceMatchedWith) {
+                user.matchedBasedOn = null;
+                return user;
+            }
+        });
+    }
 
     if (interests.length > 0) {
         for (let i = 0; i < users.length; i++) {

@@ -244,6 +244,60 @@ function friends(io) {
             });
         });
 
+        socket.on('friend-message-send', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            users.forEach(user => {
+                if (user.id === data.receiver) {
+                    const partnerClientId = user.clientId;
+                    friendsNs.to(`${partnerClientId}`).emit('friend-message-received', data);
+                }
+            });
+        });
+
+        socket.on('user-typed', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            users.forEach(user => {
+                if (user.id === data.receiver) {
+                    const partnerClientId = user.clientId;
+                    friendsNs.to(`${partnerClientId}`).emit('friend-typed', data);
+                }
+            });
+        });
+
+        socket.on('match-invite-send', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            users.forEach(user => {
+                if (user.id === data.receiverId) {
+                    const partnerClientId = user.clientId;
+                    friendsNs.to(`${partnerClientId}`).emit('match-invite-received', data);
+                }
+            });
+        });
+
+        socket.on('match-invite-accept', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            users.forEach(user => {
+                if (user.id === data.receiverId) {
+                    const partnerClientId = user.clientId;
+                    friendsNs.to(`${partnerClientId}`).emit('match-invite-accept', data);
+                }
+            });
+        });
+
+        socket.on('match-invite-cancel', function (data) {
+            checkAuth(userToken, wsAuth);
+
+            users.forEach(user => {
+                if (user.id === data.receiverId) {
+                    const partnerClientId = user.clientId;
+                    friendsNs.to(`${partnerClientId}`).emit('match-invite-cancel', data);
+                }
+            });
+        });
     });
 }
 

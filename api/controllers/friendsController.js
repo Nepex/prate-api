@@ -253,6 +253,10 @@ async function acceptFriendRequest(request, response) {
 
                                 let receiverFriends = receiverResults.rows[0].friends;
 
+                                if (receiverFriends.indexOf(decoded.id) > -1) {
+                                    return response.status(400).send(['You\'re already friends with that user']);
+                                }
+
                                 receiverFriends.push(decoded.id);
                                 
                                 // add the user that has accepted their friend request
