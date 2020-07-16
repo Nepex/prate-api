@@ -26,7 +26,7 @@ function chat(io) {
             // check if user is already matched or matching
             userToken = data.token;
             wsAuth = data.webSocketAuth;
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             let userAlreadyMatched;
 
@@ -53,7 +53,7 @@ function chat(io) {
         });
 
         socket.on('searchForMatch', function (user) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             // recall on front end with interval
             const partner = searchForMatch(socket.id, user.interests, user.enforce_interests, user.forcedMatchedWith);
@@ -85,8 +85,7 @@ function chat(io) {
         });
 
         socket.on('disconnect', function () {
-            console.log('dc')
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             let host;
 
@@ -113,42 +112,42 @@ function chat(io) {
         });
 
         socket.on('message-send', function (data) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('message-received', data);
         });
 
         socket.on('outer-app-invite-send', function (data) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('outer-app-invite-received', data);
         });
 
         socket.on('outer-app-invite-accept', function (data) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('outer-app-invite-accept', data);
         });
 
         socket.on('outer-app-invite-cancel', function (data) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('outer-app-invite-cancel', data);
         });
 
         socket.on('toggle-outer-app-function', function (data) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('toggle-outer-app-function', data);
         });
 
         socket.on('user-typed', function (data) {
-            checkAuth(userToken, wsAuth);
+            // checkAuth(userToken, wsAuth);
 
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('user-typed', data);
