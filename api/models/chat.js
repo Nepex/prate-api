@@ -32,7 +32,7 @@ function chat(io) {
 
             users.forEach(user => {
                 if (data.id === user.id) {
-                    socket.emit('matchError', 'You are already matching/matched!');
+                    chatNs.to(`${socket.id}`).emit('matchError', 'You are already matching/matched!');
                     socket.disconnect();
 
                     userAlreadyMatched = true;
@@ -54,12 +54,12 @@ function chat(io) {
 
         socket.on('searchForMatch', function (user) {
             checkAuth(userToken, wsAuth);
-            
+
             // recall on front end with interval
-            const partner = searchForMatch(socket.id, user.interests, user.enforce_interests, user.forceMatchedWith);
+            const partner = searchForMatch(socket.id, user.interests, user.enforce_interests, user.forcedMatchedWith);
 
             if (!partner) {
-                socket.emit('matchResults', null)
+                chatNs.to(`${socket.id}`).emit('matchResults', null);
             } else {
                 let host;
                 const partnerClientId = partner.clientId;
@@ -70,7 +70,7 @@ function chat(io) {
                         user.currentlyMatchedWith = partnerClientId;
                         host = user;
                         host.matchedBasedOn = partner.matchedBasedOn;
-                        socket.emit('matchResults', partner);
+                        chatNs.to(`${socket.id}`).emit('matchResults', partner);
                     }
                 });
 
@@ -85,6 +85,7 @@ function chat(io) {
         });
 
         socket.on('disconnect', function () {
+            console.log('dc')
             checkAuth(userToken, wsAuth);
 
             let host;
@@ -148,7 +149,7 @@ function chat(io) {
 
         socket.on('user-typed', function (data) {
             checkAuth(userToken, wsAuth);
-            
+
             const partnerClientId = data.receiver;
             chatNs.to(`${partnerClientId}`).emit('user-typed', data);
         });
@@ -160,47 +161,60 @@ function chat(io) {
     });
 }
 
-function searchForMatch(hostId, interests, enforceInterests, forceMatchedWith) {
+function searchForMatch(hostId, interests, enforceInterests, forcedMatchedWith) {
     let interestMatchFound = false;
 
-    if (forceMatchedWith) {
+    // if invitation
+    if (forcedMatchedWith) {
+        let found = false;
+
         users.forEach(user => {
-            if (user.id === forceMatchedWith) {
-                user.matchedBasedOn = null;
-                return user;
+            if (user.id === forcedMatchedWith && user.clientId !== hostId) {
+                user.matchedBasedOn = 'invitation';
+                found = user;
             }
         });
-    }
 
-    if (interests.length > 0) {
-        for (let i = 0; i < users.length; i++) {
-            for (let j = 0; j < users[i].interests.length; j++) {
-                for (let k = 0; k < interests.length; k++) {
-                    if (!users[i].currentlyMatchedWith && users[i].clientId !== hostId && interests[k] === users[i].interests[j]) {
-                        interestMatchFound = true;
-                        users[i].matchedBasedOn = interests[k];
+        if (found) {
+            return found;
+        } else {
+            return false;
+        }
+
+    } 
+    //  match normally
+    else {
+
+        if (interests.length > 0) {
+            for (let i = 0; i < users.length; i++) {
+                for (let j = 0; j < users[i].interests.length; j++) {
+                    for (let k = 0; k < interests.length; k++) {
+                        if (!users[i].currentlyMatchedWith && users[i].clientId !== hostId && interests[k] === users[i].interests[j]) {
+                            interestMatchFound = true;
+                            users[i].matchedBasedOn = interests[k];
+
+                            return users[i];
+                        }
+                    }
+                }
+            }
+        }
+
+        // find no common interests partner if enforce interests is false or if it's true but there are no interests selected
+        if ((enforceInterests && interests.length === 0) || !enforceInterests) {
+            if (!interestMatchFound) {
+                for (let i = 0; i < users.length; i++) {
+                    if (!users[i].currentlyMatchedWith && users[i].clientId !== hostId && ((users[i].enforce_interests && users[i].interests.length === 0) || !users[i].enforce_interests)) {
+                        users[i].matchedBasedOn = null;
 
                         return users[i];
                     }
                 }
             }
         }
+
+        return false;
     }
-
-    // find no common interests partner if enforce interests is false or if it's true but there are no interests selected
-    if ((enforceInterests && interests.length === 0) || !enforceInterests) {
-        if (!interestMatchFound) {
-            for (let i = 0; i < users.length; i++) {
-                if (!users[i].currentlyMatchedWith && users[i].clientId !== hostId && ((users[i].enforce_interests && users[i].interests.length === 0) || !users[i].enforce_interests)) {
-                    users[i].matchedBasedOn = null;
-
-                    return users[i];
-                }
-            }
-        }
-    }
-
-    return false;
 }
 
 module.exports = function (io) {
